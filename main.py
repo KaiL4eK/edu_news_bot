@@ -28,10 +28,6 @@ def run(updater):
 
 
 def main():
-
-    with open('token.yaml') as f:
-        data = yaml.load(f, Loader=yaml.FullLoader)
-
     updater = Updater(token=TOKEN, use_context=True)
     dp = updater.dispatcher
 
