@@ -17,9 +17,11 @@ class StreamingNews:
         for source in self.sources:
             links = source.get_news()
 
-            for link, ts in links:
+            for link in links:
                 if link in self.full_news_list:
                     continue
+
+                ts = source.get_time(link)
 
                 self.full_news_list.append(
                     (link, ts)
@@ -57,17 +59,12 @@ class GovNewsParser:
 
         for news in content.find_all("div", {"class": "row mb2"}):
             reference = news.find("a")
-
             link = reference['href']
-            date = self._get_time(link)
-
-            links.append(
-                (link, date)
-            )
+            links.append(link)
 
         return links
 
-    def _get_time(self, url):
+    def get_time(self, url):
         response = requests.get(url)
         root_soup = BeautifulSoup(response.content, 'lxml')
         content = root_soup.find("div", id="content")
