@@ -11,9 +11,9 @@ logger = logging.getLogger()
 
 TOKEN = os.environ.get('API_KEY')
 
-def cmd_start(bot, update):
-    logger.info("User {} started bot".format(update.user_data))
-    update.message.reply_text("Hello from Python!")
+def cmd_start(update, context):
+    logger.info("User {} started bot".format(context.user_data))
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Hello from Python!")
 
 
 def run(updater):
