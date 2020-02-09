@@ -31,8 +31,13 @@ class StreamingNews:
 
         for news in self.full_news_list:
             link = news[0]
-            if link in self.readed_news[id_]:
-                continue
+            if id_ in self.readed_news:
+                if link in self.readed_news[id_]:
+                    continue
+                else:
+                    self.readed_news[id_].append(link)
+            else:
+                self.readed_news[id_] = [link]
 
             return link
 
