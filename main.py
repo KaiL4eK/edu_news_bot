@@ -12,7 +12,7 @@ logger = logging.getLogger()
 
 TOKEN = os.environ.get('API_KEY')
 
-stream = StreamingNews(
+stream = news.StreamingNews(
     sources = [
         news.GovNewsParser()
     ]
