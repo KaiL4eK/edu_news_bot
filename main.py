@@ -12,7 +12,7 @@ logger = logging.getLogger()
 TOKEN = os.environ.get('API_KEY')
 
 def cmd_start(bot, update):
-    logger.info("User {} started bot".format(update.effective_user["id"]))
+    logger.info("User {} started bot".format(update.user_data))
     update.message.reply_text("Hello from Python!")
 
 
