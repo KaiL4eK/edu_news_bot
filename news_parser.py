@@ -84,5 +84,9 @@ if __name__ == '__main__':
     parser = GovNewsParser()
 
     news = parser.get_news()
-
     print(news)
+
+    stream = StreamingNews(sources=[parser])
+
+    for i in range(5):
+        print(stream.get_news(6))
