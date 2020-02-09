@@ -27,7 +27,7 @@ class StreamingNews:
 
         self.full_news_list = \
             sorted(self.full_news_list,
-                   key=lambda x: x['time'])
+                   key=lambda x: x[1])
 
         for news in self.full_news_list:
             link = news[0]
