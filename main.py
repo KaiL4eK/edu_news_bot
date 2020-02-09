@@ -12,14 +12,22 @@ logger = logging.getLogger()
 
 TOKEN = os.environ.get('API_KEY')
 
+stream = StreamingNews(
+    sources = [
+        news.GovNewsParser()
+    ]
+)
+
 def cmd_start(update, context):
     logger.info('User {} started bot'.format(context.user_data))
     context.bot.send_message(chat_id=update.effective_chat.id, text="Hello from Python!")
 
 def cmd_news(update, context):
-    parser = news.GovNewsParser()
-    links = parser.get_news()
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Here are your news: {}".format(links[0]))
+    link = stream.get_news(update.effective_chat.id)
+    if link is None:
+        context.bot.send_message(chat_id=update.effective_chat.id, text="Нету новых новостей =(")
+
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Свеженькое для вас: {}".format(link))
 
 
 def run(updater):
