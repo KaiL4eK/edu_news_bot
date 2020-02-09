@@ -1,10 +1,8 @@
 import requests
 
-from bs4 import BeautifulSoup
+import dateparser
 
-import datetime
-import locale
-locale.setlocale(locale.LC_TIME, 'ru_RU.utf8')
+from bs4 import BeautifulSoup
 
 
 class StreamingNews:
@@ -72,10 +70,7 @@ class GovNewsParser:
         date_str = content.find("div", {'class': 'date'}).text
         date_str = date_str.strip()
 
-        date = datetime.datetime.strptime(date_str, u'%d %B %Y, %H:%M')
-        ts = date.timestamp()
-
-        print(ts)
+        ts = dateparser.parse(date_str).timestamp()
 
         return ts
 
