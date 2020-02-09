@@ -1,6 +1,8 @@
+import logging
+import os
+
 import yaml
 from telegram.ext import Updater, CommandHandler
-import logging
 
 # Enabling logging
 logging.basicConfig(level=logging.INFO,
