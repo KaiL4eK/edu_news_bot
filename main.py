@@ -1,8 +1,9 @@
 import logging
 import os
 
-import yaml
 from telegram.ext import Updater, CommandHandler
+
+import news_parser as news
 
 # Enabling logging
 logging.basicConfig(level=logging.INFO,
@@ -12,8 +13,13 @@ logger = logging.getLogger()
 TOKEN = os.environ.get('API_KEY')
 
 def cmd_start(update, context):
-    logger.info("User {} started bot".format(context.user_data))
+    logger.info('User {} started bot'.format(context.user_data))
     context.bot.send_message(chat_id=update.effective_chat.id, text="Hello from Python!")
+
+def cmd_news(update, context):
+    parser = news.GovNewsParser()
+    links = parser.get_news()
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Here are your news: {}".format(links[0]))
 
 
 def run(updater):
@@ -31,8 +37,7 @@ def main():
     updater = Updater(token=TOKEN, use_context=True)
     dp = updater.dispatcher
 
-    # dp.add_handler(CommandHandler('news', cmd_start))
-
+    dp.add_handler(CommandHandler('news', cmd_news))
     dp.add_handler(CommandHandler("start", cmd_start))
 
     run(updater)
