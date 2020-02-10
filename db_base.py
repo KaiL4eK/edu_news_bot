@@ -3,7 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 import os
-DB_CONNECT = os.environ.get('DB_CONNECT')
+DB_CONNECT = os.environ.get('DATABASE_URL')
 
 engine = create_engine(DB_CONNECT)
 Session = sessionmaker(bind=engine)

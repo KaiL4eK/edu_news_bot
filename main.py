@@ -25,12 +25,15 @@ def cmd_start(update, context):
     context.bot.send_message(
         chat_id=update.effective_chat.id, text="Hello from Python!")
 
+more_news_keyboard = [[
+    InlineKeyboardButton('Еще новостей!', callback_data='more_news')
+]]
 
 def cb_button(update, context):
-    custom_keyboard = [[
-        InlineKeyboardButton('Еще новостей!', callback_data='more_news')
-    ]]
-    reply_markup = InlineKeyboardMarkup(custom_keyboard)
+    query = update.callback_query
+    query.edit_message_reply_markup(InlineKeyboardMarkup([[]]))
+
+    reply_markup = InlineKeyboardMarkup(more_news_keyboard)
 
     link = stream.get_last_fresh_news(update.effective_chat.id)
     if link is None:
@@ -44,10 +47,7 @@ def cb_button(update, context):
 
 
 def cmd_news(update, context):
-    custom_keyboard = [
-        InlineKeyboardButton('Больше новостей!')
-    ]
-    reply_markup = InlineKeyboardMarkup(custom_keyboard)
+    reply_markup = InlineKeyboardMarkup(more_news_keyboard)
 
     link = stream.get_last_fresh_news(update.effective_chat.id)
     if link is None:
@@ -61,14 +61,20 @@ def cmd_news(update, context):
 
 
 def run(updater):
-    PORT = int(os.environ.get("PORT", "8443"))
-    HEROKU_APP_NAME = os.environ.get("HEROKU_APP_NAME")
+    MODE = os.environ.get("MODE", 'dev')
 
-    updater.start_webhook(listen="0.0.0.0",
-                          port=PORT,
-                          url_path=TOKEN)
-    updater.bot.set_webhook(
-        "https://{}.herokuapp.com/{}".format(HEROKU_APP_NAME, TOKEN))
+    if MODE == 'prod':
+        PORT = int(os.environ.get("PORT", "8443"))
+        HEROKU_APP_NAME = os.environ.get("HEROKU_APP_NAME")
+
+        updater.start_webhook(listen="0.0.0.0",
+                              port=PORT,
+                              url_path=TOKEN)
+        updater.bot.set_webhook(
+            "https://{}.herokuapp.com/{}".format(HEROKU_APP_NAME, TOKEN))
+    else:
+        updater.start_polling()
+        updater.idle()
 
 
 def main():
