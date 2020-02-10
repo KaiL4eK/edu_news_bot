@@ -27,9 +27,9 @@ def cmd_start(update, context):
 
 
 def cb_button(update, context):
-    custom_keyboard = [
-        InlineKeyboardButton('Еще новостей!')
-    ]
+    custom_keyboard = [[
+        InlineKeyboardButton('Еще новостей!', callback_data='more_news')
+    ]]
     reply_markup = InlineKeyboardMarkup(custom_keyboard)
 
     link = stream.get_last_fresh_news(update.effective_chat.id)
