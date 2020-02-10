@@ -2,6 +2,7 @@ import logging
 import os
 
 from telegram.ext import Updater, CommandHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import news_parser as news
 
@@ -13,22 +14,50 @@ logger = logging.getLogger()
 TOKEN = os.environ.get('API_KEY')
 
 stream = news.StreamingNews(
-    sources = [
+    sources=[
         news.GovNewsParser()
     ]
 )
 
+
 def cmd_start(update, context):
     logger.info('User {} started bot'.format(context.user_data))
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Hello from Python!")
+    context.bot.send_message(
+        chat_id=update.effective_chat.id, text="Hello from Python!")
 
-def cmd_news(update, context):
+
+def cb_button(update, context):
+    custom_keyboard = [
+        InlineKeyboardButton('Больше новостей!')
+    ]
+    reply_markup = InlineKeyboardMarkup(custom_keyboard)
+
     link = stream.get_last_fresh_news(update.effective_chat.id)
     if link is None:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="На сегодня новые новости закончились, хорошего дня! =)")
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text="На сегодня новые новости закончились, хорошего дня! =)")
         return
 
-    context.bot.send_message(chat_id=update.effective_chat.id, text="Свеженькое для вас: {}".format(link))
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text="Свеженькое для вас: {}".format(link),
+                             reply_markup=reply_markup)
+
+
+def cmd_news(update, context):
+    custom_keyboard = [
+        InlineKeyboardButton('Больше новостей!')
+    ]
+    reply_markup = InlineKeyboardMarkup(custom_keyboard)
+
+    link = stream.get_last_fresh_news(update.effective_chat.id)
+    if link is None:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text="На сегодня новые новости закончились, хорошего дня! =)")
+        return
+
+    context.bot.send_message(chat_id=update.effective_chat.id,
+                             text="Свеженькое для вас: {}".format(link),
+                             reply_markup=reply_markup)
 
 
 def run(updater):
@@ -48,6 +77,7 @@ def main():
 
     dp.add_handler(CommandHandler('news', cmd_news))
     dp.add_handler(CommandHandler("start", cmd_start))
+    dp.add_handler(CallbackQueryHandler(cb_button))
 
     run(updater)
 
