@@ -1,7 +1,7 @@
 import logging
 import os
 
-from telegram.ext import Updater, CommandHandler
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import news_parser as news
@@ -28,7 +28,7 @@ def cmd_start(update, context):
 
 def cb_button(update, context):
     custom_keyboard = [
-        InlineKeyboardButton('Больше новостей!')
+        InlineKeyboardButton('Еще новостей!')
     ]
     reply_markup = InlineKeyboardMarkup(custom_keyboard)
 
