@@ -175,7 +175,7 @@ class StreamingNews:
 
         self._commit_2_history_db(fresh_news, user_id)
 
-        return fresh_news
+        return fresh_news.link
 
 
 class GovNewsParser:
