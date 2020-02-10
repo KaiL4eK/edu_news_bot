@@ -23,9 +23,9 @@ def cmd_start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text="Hello from Python!")
 
 def cmd_news(update, context):
-    link = stream.get_news(update.effective_chat.id)
+    link = stream.get_last_fresh_news(update.effective_chat.id)
     if link is None:
-        context.bot.send_message(chat_id=update.effective_chat.id, text="Нету новых новостей =(")
+        context.bot.send_message(chat_id=update.effective_chat.id, text="На сегодня новые новости закончились, хорошего дня! =)")
 
     context.bot.send_message(chat_id=update.effective_chat.id, text="Свеженькое для вас: {}".format(link))
 
