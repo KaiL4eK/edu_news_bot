@@ -35,7 +35,13 @@ def cb_button(update, context):
 
     reply_markup = InlineKeyboardMarkup(more_news_keyboard)
 
-    link = stream.get_last_fresh_news(update.effective_chat.id)
+    try:
+        link = stream.get_last_fresh_news(update.effective_chat.id)
+    except:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text="Что-то пошло не так =( Спроси лешу =)")
+        return
+
     if link is None:
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text="На сегодня новые новости закончились, хорошего дня! =)")
@@ -49,7 +55,13 @@ def cb_button(update, context):
 def cmd_news(update, context):
     reply_markup = InlineKeyboardMarkup(more_news_keyboard)
 
-    link = stream.get_last_fresh_news(update.effective_chat.id)
+    try:
+        link = stream.get_last_fresh_news(update.effective_chat.id)
+    except:
+        context.bot.send_message(chat_id=update.effective_chat.id,
+                                 text="Что-то пошло не так =( Спроси лешу =)")
+        return
+
     if link is None:
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text="На сегодня новые новости закончились, хорошего дня! =)")

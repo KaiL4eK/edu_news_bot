@@ -1,10 +1,13 @@
-from bs4 import BeautifulSoup
-import dateparser
-import requests
 import logging
+import os
+import time
+import concurrent.futures
 
 import datetime
 
+import dateparser
+import requests
+from bs4 import BeautifulSoup
 from sqlalchemy import Column, Integer, String, UniqueConstraint, Float, ForeignKey
 from sqlalchemy.sql import exists
 
@@ -25,6 +28,7 @@ class NewsLink(Base):
     def __repr__(self):
         return 'Link<id={}, link={}, ts={}>' \
             .format(self.id, self.link, self.ts)
+
 
 class ReadHistory(Base):
     __tablename__ = 'read_history'
@@ -59,6 +63,10 @@ class NewsRecord:
     def __eq__(self, other):
         self.link == other.link
 
+    def __repr__(self):
+        return 'NewsRecord<link={}, ts={}>' \
+            .format(self.link, self.ts)
+
 
 class StreamingNews:
     def __init__(self, sources):
@@ -69,25 +77,7 @@ class StreamingNews:
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.db_session = Session()
-        # self._recovery_history()
-
-    # def _recovery_history(self):
-    #     history_entries = self.db_session.query(ReadHistory).all()
-
-    #     self.logger.info('Recovery len: {}'.format(len(history_entries)))
-
-    #     for history in history_entries:
-    #         self._add_to_history(history.link, history.user_id)
-
-    #         self.logger.info('Recovered: {}'.format(history))
-
-    #         if link not in self.full_news_list:
-
-    #             self.full_news_list.append(
-    #                 history.link,
-    #             )
-
-    # def _recovery_last_news(self):
+        self.last_update_time = 0
 
     def _is_db_cached(self, link):
         news_entries = self.db_session.query(NewsLink) \
@@ -126,7 +116,8 @@ class StreamingNews:
         self.logger.info('Commited to database')
 
     def _get_last_fresh_news(self, user_id):
-        subquery = self.db_session.query(ReadHistory.link_id).filter(ReadHistory.user_id == user_id).all()
+        subquery = self.db_session.query(ReadHistory.link_id).filter(
+            ReadHistory.user_id == user_id).all()
         new_history_entries = self.db_session.query(NewsLink) \
             .filter(~NewsLink.id.in_(subquery)) \
             .order_by(NewsLink.ts.desc()) \
@@ -148,17 +139,26 @@ class StreamingNews:
 
         self.logger.info('Called _update_last_news()')
 
+        links_2_get_info = {}
+
         for source in self.sources:
-            news_list = source.get_last_news()
-            for news in news_list:
-                if self._is_db_cached(news.link):
+            links = source.get_last_news_links()
+            for link in links:
+                if self._is_db_cached(link):
                     continue
 
-                ts = source.get_time(news.link)
-                news.set_time(ts)
+                links_2_get_info[link] = source
 
-                self.logger.info(
-                    'Received news: {}'.format(news.link, news.ts))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_url = {executor.submit(source.get_time, source, link): link
+                             for link, source in links_2_get_info.items()}
+
+            for future in concurrent.futures.as_completed(future_to_url):
+                link = future_to_url[future]
+                ts = future.result()
+
+                news = NewsRecord(link=link, ts=ts)
+                self.logger.info('Received: {}'.format(news))
 
                 news_2_cache.append(news)
 
@@ -167,7 +167,9 @@ class StreamingNews:
         self._cache_2_db(news_2_cache)
 
     def get_last_fresh_news(self, user_id):
-        self._update_last_news()
+        if time.time() - self.last_update_time > 5*60:
+            self._update_last_news()
+            self.last_update_time = time.time()
 
         fresh_news = self._get_last_fresh_news(user_id)
         if fresh_news is None:
@@ -182,7 +184,7 @@ class GovNewsParser:
     def __init__(self):
         self.url = 'https://edu.gov.ru/press/news/'
 
-    def get_last_news(self):
+    def get_last_news_links(self):
         response = requests.get(self.url)
         root_soup = BeautifulSoup(response.content, 'lxml')
         content = root_soup.find("div", id="content")
@@ -193,7 +195,7 @@ class GovNewsParser:
             reference = news.find("a")
             link = reference['href']
             links.append(
-                NewsRecord(link)
+                link
             )
 
         return links
@@ -206,7 +208,53 @@ class GovNewsParser:
         date_str = content.find("div", {'class': 'date'}).text
         date_str = date_str.strip()
 
+        # Set GMT
+        date_str = date_str + ' +0300'
+
         ts = dateparser.parse(date_str).timestamp()
+
+        return ts
+
+
+class EduLenoblNewsParser:
+    def __init__(self):
+        self.url = 'http://edu.lenobl.ru/ru/about/news/'
+
+        self.link_root_url = 'http://edu.lenobl.ru'
+
+    def get_last_news_links(self):
+        response = requests.get(self.url)
+        root_soup = BeautifulSoup(response.content, 'lxml')
+        content = root_soup.find("div", id="content")
+
+        links = []
+
+        for news in content.find_all("div", {"class": "col-md-6"}):
+            reference = news.find("a", {"class": "item"})
+            link = reference['href']
+
+            link = self.link_root_url + link
+            links.append(
+                link
+            )
+
+        return links
+
+    def get_time(self, url):
+        response = requests.get(url)
+        root_soup = BeautifulSoup(response.content, 'lxml')
+        content = root_soup.find("div", id="content")
+
+        date_str = content.find("div", {'class': 'time'}).text
+        date_str = date_str.strip()
+
+        # Set GMT
+        date_str = date_str + ' +0300'
+
+        ts = dateparser.parse(date_str).timestamp()
+
+        # Correction to get middle of day
+        ts += 60 * 60 * 12
 
         return ts
 
@@ -216,16 +264,17 @@ if __name__ == '__main__':
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     parser = GovNewsParser()
+    parser_2 = EduLenoblNewsParser()
 
-    # news = parser.get_news()
-    # print(news)
+    news = parser_2.get_last_news()
 
-    stream = StreamingNews(sources=[parser])
+    # for news_entry in news:
+    #     news_entry.ts = parser_2.get_time(news_entry.link)
+    #     print(news_entry)
 
-    stream._print_history()
-    stream._print_news_table()
+    # stream = StreamingNews(sources=[parser])
 
-    news = stream.get_last_fresh_news(6)
+    # stream._print_history()
+    # stream._print_news_table()
 
-    # for i in range(5):
-    # print(stream.get_news(6))
+    # news = stream.get_last_fresh_news(6)
