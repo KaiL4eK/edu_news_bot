@@ -62,7 +62,7 @@ def cmd_news(update, context):
 
     try:
         link = stream.get_last_fresh_news(update.effective_chat.id)
-    except:
+    except Exception as e:
         logger.error(e)
         context.bot.send_message(chat_id=update.effective_chat.id,
                                  text="Что-то пошло не так =( Спроси лешу =)")
