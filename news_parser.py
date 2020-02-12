@@ -141,32 +141,39 @@ class StreamingNews:
 
         links_2_get_info = {}
 
-        for source in self.sources:
-            news_records = source.get_last_news()
-            for news_rec in news_records:
-                if self._is_db_cached(news_rec.link):
-                    continue
+        sources_workers = min(len(self.sources), 10)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=sources_workers) as executor:
+            futures = [executor.submit(source.get_last_news)
+                       for source in self.sources]
 
-                if news_rec.ts < 0:
-                    links_2_get_info[news_rec.link] = source
-                else:
-                    news_2_cache.append(news_rec)
+            for future in concurrent.futures.as_completed(futures):
+                news_records = future.result()
+                for news_rec in news_records:
+                    if self._is_db_cached(news_rec.link):
+                        continue
+
+                    if news_rec.ts < 0:
+                        links_2_get_info[news_rec.link] = source
+                    else:
+                        news_2_cache.append(news_rec)
 
         # Concurrently receive times
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_url = {executor.submit(source.get_time, link): link
-                             for link, source in links_2_get_info.items()}
+        attributes_workers = min(len(links_2_get_info), 10)
+        if attributes_workers > 0:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=attributes_workers) as executor:
+                future_to_url = {executor.submit(source.get_time, link): link
+                                for link, source in links_2_get_info.items()}
 
-            for future in concurrent.futures.as_completed(future_to_url):
-                link = future_to_url[future]
-                ts = future.result()
+                for future in concurrent.futures.as_completed(future_to_url):
+                    link = future_to_url[future]
+                    ts = future.result()
 
-                news_rec = NewsRecord(link=link, ts=ts)
-                self.logger.info('Received: {}'.format(news_rec))
+                    news_rec = NewsRecord(link=link, ts=ts)
+                    self.logger.info('Received: {}'.format(news_rec))
 
-                news_2_cache.append(news_rec)
+                    news_2_cache.append(news_rec)
 
-        self._cache_2_db(news_2_cache)
+            self._cache_2_db(news_2_cache)
 
     def get_last_fresh_news(self, user_id):
         if time.time() - self.last_update_time > 5*60:

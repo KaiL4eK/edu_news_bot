@@ -44,7 +44,7 @@ def cb_button(update, context):
     except Exception as e:
         logger.error(e)
         context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text="Что-то пошло не так =( Спроси лешу =)")
+                                 text="Что-то пошло не так -> Спроси лешу =)")
         return
 
     if link is None:
@@ -65,7 +65,7 @@ def cmd_news(update, context):
     except Exception as e:
         logger.error(e)
         context.bot.send_message(chat_id=update.effective_chat.id,
-                                 text="Что-то пошло не так =( Спроси лешу =)")
+                                 text="Что-то пошло не так -> Спроси лешу =)")
         return
 
     if link is None:
