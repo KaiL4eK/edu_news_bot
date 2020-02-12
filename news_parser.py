@@ -142,13 +142,17 @@ class StreamingNews:
         links_2_get_info = {}
 
         for source in self.sources:
-            links = source.get_last_news_links()
-            for link in links:
-                if self._is_db_cached(link):
+            news_records = source.get_last_news()
+            for news_rec in news_records:
+                if self._is_db_cached(news_rec.link):
                     continue
 
-                links_2_get_info[link] = source
+                if news_rec.ts < 0:
+                    links_2_get_info[news_rec.link] = source
+                else:
+                    news_2_cache.append(news_rec)
 
+        # Concurrently receive times
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             future_to_url = {executor.submit(source.get_time, source, link): link
                              for link, source in links_2_get_info.items()}
@@ -157,12 +161,10 @@ class StreamingNews:
                 link = future_to_url[future]
                 ts = future.result()
 
-                news = NewsRecord(link=link, ts=ts)
-                self.logger.info('Received: {}'.format(news))
+                news_rec = NewsRecord(link=link, ts=ts)
+                self.logger.info('Received: {}'.format(news_rec))
 
-                news_2_cache.append(news)
-
-            print('Source end')
+                news_2_cache.append(news_rec)
 
         self._cache_2_db(news_2_cache)
 
@@ -184,21 +186,21 @@ class GovNewsParser:
     def __init__(self):
         self.url = 'https://edu.gov.ru/press/news/'
 
-    def get_last_news_links(self):
+    def get_last_news(self):
         response = requests.get(self.url)
         root_soup = BeautifulSoup(response.content, 'lxml')
         content = root_soup.find("div", id="content")
 
-        links = []
+        records = []
 
         for news in content.find_all("div", {"class": "row mb2"}):
             reference = news.find("a")
             link = reference['href']
-            links.append(
-                link
+            records.append(
+                NewsRecord(link)
             )
 
-        return links
+        return records
 
     def get_time(self, url):
         response = requests.get(url)
@@ -222,23 +224,23 @@ class EduLenoblNewsParser:
 
         self.link_root_url = 'http://edu.lenobl.ru'
 
-    def get_last_news_links(self):
+    def get_last_news(self):
         response = requests.get(self.url)
         root_soup = BeautifulSoup(response.content, 'lxml')
         content = root_soup.find("div", id="content")
 
-        links = []
+        records = []
 
         for news in content.find_all("div", {"class": "col-md-6"}):
             reference = news.find("a", {"class": "item"})
             link = reference['href']
 
             link = self.link_root_url + link
-            links.append(
-                link
+            records.append(
+                NewsRecord(link)
             )
 
-        return links
+        return records
 
     def get_time(self, url):
         response = requests.get(url)
@@ -259,18 +261,42 @@ class EduLenoblNewsParser:
         return ts
 
 
+class Edu53NewsParser:
+    def __init__(self):
+        self.rss_url = 'http://edu53.ru/news/all/rss'
+
+    def get_last_news(self):
+        response = requests.get(self.rss_url)
+        root_soup = BeautifulSoup(response.content, 'xml')
+
+        records = []
+
+        for news in root_soup.find_all("item"):
+            link = news.find("link").text
+
+            date_str = news.find("pubDate").text
+            ts = dateparser.parse(date_str).timestamp()
+
+            records.append(
+                NewsRecord(link, ts)
+            )
+
+        return records
+
+    def get_time(self, url):
+        return 0
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
-    parser = GovNewsParser()
-    parser_2 = EduLenoblNewsParser()
+    parser = Edu53NewsParser()
 
-    news = parser_2.get_last_news()
+    news = parser.get_last_news()
 
-    # for news_entry in news:
-    #     news_entry.ts = parser_2.get_time(news_entry.link)
-    #     print(news_entry)
+    for news_entry in news:
+        print(news_entry)
 
     # stream = StreamingNews(sources=[parser])
 
