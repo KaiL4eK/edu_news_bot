@@ -113,7 +113,7 @@ class StreamingNews:
         self.db_session.add(history_db_entry)
         self.db_session.commit()
 
-        self.logger.info('Commited to database')
+        self.logger.info('Commited to history database')
 
     def _get_last_fresh_news(self, user_id):
         subquery = self.db_session.query(ReadHistory.link_id).filter(
@@ -143,10 +143,11 @@ class StreamingNews:
 
         sources_workers = min(len(self.sources), 10)
         with concurrent.futures.ThreadPoolExecutor(max_workers=sources_workers) as executor:
-            futures = [executor.submit(source.get_last_news)
-                       for source in self.sources]
+            futures_2_source = {executor.submit(source.get_last_news): source
+                                for source in self.sources}
 
-            for future in concurrent.futures.as_completed(futures):
+            for future in concurrent.futures.as_completed(futures_2_source):
+                source = futures_2_source[future]
                 news_records = future.result()
                 for news_rec in news_records:
                     if self._is_db_cached(news_rec.link):
@@ -162,7 +163,7 @@ class StreamingNews:
         if attributes_workers > 0:
             with concurrent.futures.ThreadPoolExecutor(max_workers=attributes_workers) as executor:
                 future_to_url = {executor.submit(source.get_time, link): link
-                                for link, source in links_2_get_info.items()}
+                                 for link, source in links_2_get_info.items()}
 
                 for future in concurrent.futures.as_completed(future_to_url):
                     link = future_to_url[future]
