@@ -154,7 +154,7 @@ class StreamingNews:
 
         # Concurrently receive times
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_url = {executor.submit(source.get_time, source, link): link
+            future_to_url = {executor.submit(source.get_time, link): link
                              for link, source in links_2_get_info.items()}
 
             for future in concurrent.futures.as_completed(future_to_url):

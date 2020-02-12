@@ -27,9 +27,11 @@ def cmd_start(update, context):
     context.bot.send_message(
         chat_id=update.effective_chat.id, text="Hello from Python!")
 
+
 more_news_keyboard = [[
     InlineKeyboardButton('Еще новостей!', callback_data='more_news')
 ]]
+
 
 def cb_button(update, context):
     query = update.callback_query
